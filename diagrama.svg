@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 420" width="760" height="420" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="flecha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#333"/>
+    </marker>
+  </defs>
+  <rect width="760" height="420" fill="#ffffff"/>
+  <text x="380" y="30" text-anchor="middle" font-size="18" font-weight="bold" fill="#222">Biblioteca de barrio: componentes y dependencias</text>
+
+  <!-- main -->
+  <rect x="280" y="55" width="200" height="60" rx="8" fill="#fff3cd" stroke="#b58900" stroke-width="2"/>
+  <text x="380" y="82" text-anchor="middle" font-size="16" font-weight="bold">main.py</text>
+  <text x="380" y="102" text-anchor="middle" font-size="12">consola; junta los componentes</text>
+
+  <!-- prestamos -->
+  <rect x="280" y="190" width="200" height="80" rx="8" fill="#d1e7dd" stroke="#0f5132" stroke-width="2"/>
+  <text x="380" y="218" text-anchor="middle" font-size="16" font-weight="bold">Prestamos</text>
+  <text x="380" y="238" text-anchor="middle" font-size="12">prestar, devolver, reservar</text>
+  <text x="380" y="254" text-anchor="middle" font-size="12">(clase Prestamo)</text>
+
+  <!-- catalogo -->
+  <rect x="40" y="320" width="220" height="80" rx="8" fill="#cfe2ff" stroke="#084298" stroke-width="2"/>
+  <text x="150" y="348" text-anchor="middle" font-size="16" font-weight="bold">Catalogo</text>
+  <text x="150" y="368" text-anchor="middle" font-size="12">buscar, obtener, marcar_prestado</text>
+  <text x="150" y="384" text-anchor="middle" font-size="12">(clases Libro, Ejemplar)</text>
+
+  <!-- socios -->
+  <rect x="500" y="320" width="220" height="80" rx="8" fill="#f8d7da" stroke="#842029" stroke-width="2"/>
+  <text x="610" y="348" text-anchor="middle" font-size="16" font-weight="bold">Socios</text>
+  <text x="610" y="368" text-anchor="middle" font-size="12">alta, obtener, esta_sancionado</text>
+  <text x="610" y="384" text-anchor="middle" font-size="12">(clase Socio)</text>
+
+  <!-- flechas -->
+  <line x1="380" y1="115" x2="380" y2="188" stroke="#333" stroke-width="2" marker-end="url(#flecha)"/>
+  <text x="392" y="156" font-size="12" fill="#333">1. usa</text>
+
+  <line x1="300" y1="270" x2="190" y2="318" stroke="#333" stroke-width="2" marker-end="url(#flecha)"/>
+  <text x="200" y="285" font-size="12" fill="#333">2. usa (solo funciones públicas)</text>
+
+  <line x1="460" y1="270" x2="570" y2="318" stroke="#333" stroke-width="2" marker-end="url(#flecha)"/>
+  <text x="500" y="285" font-size="12" fill="#333">3. usa (solo funciones públicas)</text>
+
+  <line x1="280" y1="95" x2="150" y2="95" stroke="#333" stroke-width="2"/>
+  <line x1="150" y1="95" x2="150" y2="318" stroke="#333" stroke-width="2" marker-end="url(#flecha)"/>
+  <text x="60" y="150" font-size="12" fill="#333">4. usa</text>
+
+  <line x1="480" y1="95" x2="610" y2="95" stroke="#333" stroke-width="2"/>
+  <line x1="610" y1="95" x2="610" y2="318" stroke="#333" stroke-width="2" marker-end="url(#flecha)"/>
+  <text x="625" y="150" font-size="12" fill="#333">5. usa</text>
+
+  <text x="380" y="410" text-anchor="middle" font-size="12" fill="#555">Catalogo y Socios no conocen a nadie: no hay flechas que salgan de ellos.</text>
+</svg>

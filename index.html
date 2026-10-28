@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biblioteca de barrio</title>
+<style>
+  :root { --bg:#f6f3ee; --card:#fff; --ink:#222; --acc:#0f5132; --line:#ddd; --err:#842029; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, Arial, sans-serif; background:var(--bg); color:var(--ink); }
+  header { background:var(--acc); color:#fff; padding:16px 20px; }
+  header h1 { margin:0; font-size:1.4rem; }
+  header p { margin:4px 0 0; font-size:.9rem; opacity:.85; }
+  main { max-width:960px; margin:0 auto; padding:16px; display:grid; gap:16px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  section.wide { grid-column:1/-1; }
+  h2 { margin:0 0 10px; font-size:1.05rem; }
+  label { display:block; font-size:.85rem; margin:8px 0 2px; }
+  input, select, button { font:inherit; padding:7px 9px; border-radius:6px; border:1px solid #bbb; width:100%; }
+  button { background:var(--acc); color:#fff; border:none; cursor:pointer; margin-top:8px; }
+  button.sec { background:#e9e5dc; color:var(--ink); }
+  button:hover { filter:brightness(1.1); }
+  .row { display:flex; gap:8px; } .row > * { flex:1; }
+  table { width:100%; border-collapse:collapse; font-size:.9rem; }
+  th, td { text-align:left; padding:6px; border-bottom:1px solid var(--line); }
+  #msg { position:sticky; top:0; z-index:5; margin:0; padding:10px 20px; background:#fff8e1; border-bottom:1px solid #e0c97a; min-height:2.4em; }
+  #msg.error { background:#f8d7da; color:var(--err); border-color:#e4a6ac; }
+  #msg.ok { background:#d1e7dd; color:var(--acc); border-color:#a3cfbb; }
+  .tag { font-size:.75rem; padding:2px 6px; border-radius:10px; background:#e9e5dc; }
+  .tag.venc { background:#f8d7da; color:var(--err); }
+  img { max-width:100%; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📚 Biblioteca de barrio</h1>
+  <p>Versión web: tres componentes (Catálogo, Socios, Préstamos) que solo se comunican por sus funciones públicas.</p>
+</header>
+<p id="msg">Bienvenido. Las acciones mostrarán aquí su resultado.</p>
+
+<main>
+  <section>
+    <h2>🔎 Buscar libro</h2>
+    <input id="q" placeholder="Título o parte del título" oninput="buscar()">
+    <div id="resultados"></div>
+  </section>
+
+  <section>
+    <h2>👤 Alta de socio</h2>
+    <input id="nombre" placeholder="Nombre del socio">
+    <button onclick="altaSocio()">Dar de alta</button>
+    <div id="listaSocios"></div>
+  </section>
+
+  <section>
+    <h2>📖 Préstamo y reserva</h2>
+    <label>Socio</label><select id="selSocio"></select>
+    <label>Libro</label><select id="selLibro"></select>
+    <div class="row">
+      <button onclick="prestar()">Prestar</button>
+      <button class="sec" onclick="reservar()">Reservar</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>📅 Fecha de hoy (simulada)</h2>
+    <input id="hoy" type="date">
+    <p style="font-size:.8rem;margin:6px 0 0">Cambia la fecha para probar que los préstamos caducan a los 7 días y que la devolución tardía sanciona.</p>
+  </section>
+
+  <section class="wide">
+    <h2>📋 Préstamos activos</h2>
+    <div id="listaPrestamos"></div>
+  </section>
+
+  <section class="wide">
+    <h2>🧩 Diagrama de componentes</h2>
+    <img src="diagrama.svg" alt="Diagrama de los tres componentes y sus dependencias">
+  </section>
+</main>
+
+<script>
+/* ============ Componente CATALOGO ============ */
+class Ejemplar { constructor(id){ this.id=id; this.estado="disponible"; } }
+class Libro {
+  constructor(id, titulo, autor, n){
+    this.id=id; this.titulo=titulo; this.autor=autor;
+    this.ejemplares = Array.from({length:n}, (_,i)=> new Ejemplar(`${id}-${i+1}`));
+  }
+  disponibles(){ return this.ejemplares.filter(e=>e.estado==="disponible"); }
+}
+class Catalogo {
+  #libros = new Map();                       // privado
+  agregar(titulo, autor, n=1){ const id=this.#libros.size+1; const l=new Libro(id,titulo,autor,n); this.#libros.set(id,l); return l; }
+  buscar(titulo){ const t=titulo.trim().toLowerCase(); return [...this.#libros.values()].filter(l=>l.titulo.toLowerCase().includes(t)); }
+  obtener(id){ return this.#libros.get(id) ?? null; }
+  disponibles(id){ const l=this.obtener(id); return l ? l.disponibles().length : 0; }
+  marcarPrestado(id){ const l=this.obtener(id); if(!l) return null; const e=l.disponibles()[0]; if(!e) return null; e.estado="prestado"; return e.id; }
+  marcarDevuelto(idLibro, idEj){ const l=this.obtener(idLibro); if(!l) return false; const e=l.ejemplares.find(x=>x.id===idEj&&x.estado==="prestado"); if(!e) return false; e.estado="disponible"; return true; }
+}
+
+/* ============ Componente SOCIOS ============ */
+class Socio { constructor(id,nombre){ this.id=id; this.nombre=nombre; this.sancionadoHasta=null; }
+  estaSancionado(hoy){ return this.sancionadoHasta!==null && hoy<=this.sancionadoHasta; } }
+class Socios {
+  #socios = new Map();
+  alta(nombre){ nombre=nombre.trim(); if(!nombre) throw new Error("El nombre no puede estar vacío"); const s=new Socio(this.#socios.size+1,nombre); this.#socios.set(s.id,s); return s; }
+  obtener(id){ return this.#socios.get(id) ?? null; }
+  todos(){ return [...this.#socios.values()]; }
+  estaSancionado(id,hoy){ const s=this.obtener(id); return !!s && s.estaSancionado(hoy); }
+  sancionar(id,dias,hoy){ const s=this.obtener(id); if(!s) return false; s.sancionadoHasta=sumarDias(hoy,dias); return true; }
+}
+
+/* ============ Componente PRESTAMOS ============ */
+const MAX_LIBROS=2, DIAS_PRESTAMO=7, DIAS_SANCION=7;
+function sumarDias(iso,d){ const f=new Date(iso+"T00:00:00"); f.setDate(f.getDate()+d); return f.toISOString().slice(0,10); }
+class Prestamo {
+  constructor(id,idSocio,idLibro,idEj,desde){ Object.assign(this,{id,idSocio,idLibro,idEj,desde}); this.vence=sumarDias(desde,DIAS_PRESTAMO); this.devuelto=false; }
+}
+class Prestamos {
+  #cat; #soc; #prestamos=new Map(); #reservas=new Map();
+  constructor(catalogo, socios){ this.#cat=catalogo; this.#soc=socios; }   // solo usa su API pública
+  activos(){ return [...this.#prestamos.values()].filter(p=>!p.devuelto); }
+  activosDe(idSocio){ return this.activos().filter(p=>p.idSocio===idSocio); }
+  reservasDe(idLibro){ return [...(this.#reservas.get(idLibro)??[])]; }
+  #puedePedir(idSocio,idLibro,hoy){
+    if(!this.#soc.obtener(idSocio)) return [false,"El socio no existe"];
+    if(!this.#cat.obtener(idLibro)) return [false,"El libro no existe"];
+    if(this.#soc.estaSancionado(idSocio,hoy)) return [false,"El socio está sancionado"];
+    if(this.activosDe(idSocio).length>=MAX_LIBROS) return [false,`Máximo ${MAX_LIBROS} libros a la vez`];
+    return [true,""];
+  }
+  prestar(idSocio,idLibro,hoy){
+    const [ok,motivo]=this.#puedePedir(idSocio,idLibro,hoy); if(!ok) return [false,motivo];
+    const libres=this.#cat.disponibles(idLibro);
+    if(libres===0) return [false,"No hay ejemplares libres. Puedes reservarlo."];
+    const cola=this.#reservas.get(idLibro)??[];
+    if(cola.length){
+      if(cola.includes(idSocio)){ if(cola.indexOf(idSocio)>=libres) return [false,"Hay reservas por delante de ti"]; }
+      else if(libres<=cola.length) return [false,"Los ejemplares libres están reservados"];
+    }
+    const idEj=this.#cat.marcarPrestado(idLibro); if(!idEj) return [false,"No se pudo prestar"];
+    if(cola.includes(idSocio)) cola.splice(cola.indexOf(idSocio),1);
+    const p=new Prestamo(this.#prestamos.size+1,idSocio,idLibro,idEj,hoy); this.#prestamos.set(p.id,p);
+    return [true,`Préstamo creado. Devolver antes del ${p.vence}`];
+  }
+  devolver(idPrestamo,hoy){
+    const p=this.#prestamos.get(idPrestamo); if(!p||p.devuelto) return [false,"Préstamo no encontrado o ya devuelto"];
+    this.#cat.marcarDevuelto(p.idLibro,p.idEj); p.devuelto=true;
+    if(hoy>p.vence){ this.#soc.sancionar(p.idSocio,DIAS_SANCION,hoy); return [true,`Devuelto con retraso: socio sancionado ${DIAS_SANCION} días`]; }
+    return [true,"Devuelto a tiempo"];
+  }
+  reservar(idSocio,idLibro,hoy){
+    const [ok,motivo]=this.#puedePedir(idSocio,idLibro,hoy); if(!ok) return [false,motivo];
+    if(this.#cat.disponibles(idLibro)>0) return [false,"Hay ejemplares libres, pídelo prestado directamente"];
+    const cola=this.#reservas.get(idLibro)??[]; this.#reservas.set(idLibro,cola);
+    if(cola.includes(idSocio)) return [false,"Ya tienes una reserva de este libro"];
+    cola.push(idSocio); return [true,`Reserva hecha. Posición en la cola: ${cola.length}`];
+  }
+}
+
+/* ============ Composición (equivale a main.py) ============ */
+const catalogo=new Catalogo(), socios=new Socios(), prestamos=new Prestamos(catalogo,socios);
+catalogo.agregar("Don Quijote de la Mancha","Cervantes",2);
+catalogo.agregar("Cien años de soledad","García Márquez",1);
+catalogo.agregar("La sombra del viento","Ruiz Zafón",3);
+catalogo.agregar("El principito","Saint-Exupéry",1);
+
+/* ============ Interfaz ============ */
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const hoy=()=>$("hoy").value;
+function aviso(ok,texto){ const m=$("msg"); m.textContent=texto; m.className=ok?"ok":"error"; }
+
+function buscar(){
+  const r=catalogo.buscar($("q").value);
+  $("resultados").innerHTML = r.length
+    ? `<table><tr><th>ID</th><th>Título</th><th>Libres</th></tr>${r.map(l=>`<tr><td>${l.id}</td><td>${esc(l.titulo)}<br><small>${esc(l.autor)}</small></td><td>${l.disponibles().length}/${l.ejemplares.length}${prestamos.reservasDe(l.id).length?` <span class="tag">${prestamos.reservasDe(l.id).length} reserva(s)</span>`:""}</td></tr>`).join("")}</table>`
+    : "<p>Sin resultados.</p>";
+}
+function altaSocio(){
+  try{ const s=socios.alta($("nombre").value); $("nombre").value=""; aviso(true,`Socio creado: ${s.nombre} (ID ${s.id})`); }
+  catch(e){ aviso(false,e.message); }
+  refrescar();
+}
+function prestar(){ const [ok,m]=prestamos.prestar(+$("selSocio").value,+$("selLibro").value,hoy()); aviso(ok,m); refrescar(); }
+function reservar(){ const [ok,m]=prestamos.reservar(+$("selSocio").value,+$("selLibro").value,hoy()); aviso(ok,m); refrescar(); }
+function devolver(id){ const [ok,m]=prestamos.devolver(id,hoy()); aviso(ok,m); refrescar(); }
+
+function refrescar(){
+  const todos=socios.todos();
+  $("selSocio").innerHTML = todos.map(s=>`<option value="${s.id}">${esc(s.nombre)}</option>`).join("") || "<option value=''>(da de alta un socio)</option>";
+  const libros=catalogo.buscar("");
+  $("selLibro").innerHTML = libros.map(l=>`<option value="${l.id}">${esc(l.titulo)} (${l.disponibles().length} libres)</option>`).join("");
+  $("listaSocios").innerHTML = todos.length
+    ? `<table><tr><th>ID</th><th>Socio</th><th>Estado</th></tr>${todos.map(s=>`<tr><td>${s.id}</td><td>${esc(s.nombre)}</td><td>${s.estaSancionado(hoy())?`<span class="tag venc">Sancionado hasta ${s.sancionadoHasta}</span>`:"Activo"}</td></tr>`).join("")}</table>`
+    : "<p>Aún no hay socios.</p>";
+  const act=prestamos.activos();
+  $("listaPrestamos").innerHTML = act.length
+    ? `<table><tr><th>ID</th><th>Socio</th><th>Libro</th><th>Ejemplar</th><th>Vence</th><th></th></tr>${act.map(p=>`<tr><td>${p.id}</td><td>${esc(socios.obtener(p.idSocio).nombre)}</td><td>${esc(catalogo.obtener(p.idLibro).titulo)}</td><td>${p.idEj}</td><td>${p.vence} ${hoy()>p.vence?'<span class="tag venc">vencido</span>':""}</td><td><button class="sec" style="margin:0" onclick="devolver(${p.id})">Devolver</button></td></tr>`).join("")}</table>`
+    : "<p>No hay préstamos activos.</p>";
+  buscar();
+}
+$("hoy").value=new Date().toISOString().slice(0,10);
+$("hoy").addEventListener("change",refrescar);
+refrescar();
+</script>
+</body>
+</html>
